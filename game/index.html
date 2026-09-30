@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rainbow Lagoon Adventure</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #aee9ff 0%, #d9f9d0 60%, #fff3b0 100%);
+    margin: 0; padding: 20px; text-align: center; color: #333;
+  }
+  h1 { font-size: 2rem; margin: 10px 0; text-shadow: 2px 2px 0 #fff; }
+  p { font-size: 1.1rem; }
+  .card {
+    background: white; border: 4px solid #333; border-radius: 20px;
+    padding: 20px; max-width: 700px; margin: 15px auto;
+    box-shadow: 5px 5px 0 #333;
+  }
+  .hidden { display: none; }
+  .choices { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .char-btn {
+    border: 4px solid #333; border-radius: 16px; background: #fff8dc;
+    padding: 12px; width: 150px; cursor: pointer; font-size: 1rem;
+  }
+  .char-btn.selected { background: #ffe066; transform: scale(1.05); }
+  .char-btn .big { font-size: 3.5rem; display: block; }
+  label { display: block; margin: 12px 0 4px; font-weight: bold; }
+  input[type="text"] { font-size: 1.2rem; padding: 8px; border-radius: 10px; border: 3px solid #333; width: 80%; max-width: 300px; text-align: center; }
+  input[type="color"] { width: 70px; height: 50px; border: 3px solid #333; border-radius: 10px; cursor: pointer; }
+  .preview {
+    width: 140px; height: 140px; border-radius: 50%; border: 4px solid #333;
+    margin: 10px auto; display: flex; align-items: center; justify-content: center;
+    font-size: 4.5rem;
+  }
+  .big-btn {
+    background: #ff6fb5; color: white; border: 4px solid #333; border-radius: 16px;
+    font-size: 1.4rem; padding: 12px 30px; cursor: pointer; margin-top: 15px;
+    box-shadow: 4px 4px 0 #333;
+  }
+  .big-btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 #333; }
+  #game-wrap { max-width: 860px; margin: 0 auto; }
+  canvas {
+    background: #7ed6a5; border: 5px solid #333; border-radius: 18px;
+    width: 100%; max-width: 800px; height: auto; touch-action: none;
+  }
+  #hud {
+    display: flex; justify-content: space-between; align-items: center;
+    max-width: 800px; margin: 0 auto 8px; background: white;
+    border: 3px solid #333; border-radius: 12px; padding: 8px 14px; font-size: 1.1rem;
+  }
+  #story-box {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    background: white; border: 5px solid #333; border-radius: 20px;
+    padding: 20px; max-width: 90%; width: 420px; z-index: 10;
+    box-shadow: 8px 8px 0 #333;
+  }
+  #story-box button {
+    display: block; width: 100%; margin: 8px 0; padding: 10px;
+    font-size: 1.05rem; border-radius: 12px; border: 3px solid #333;
+    background: #d0ebff; cursor: pointer;
+  }
+  #dpad { margin-top: 10px; }
+  #dpad button {
+    font-size: 1.6rem; width: 60px; height: 60px; margin: 4px;
+    border-radius: 14px; border: 3px solid #333; background: white; cursor: pointer;
+  }
+  .hint { font-size: 0.95rem; background: #fff; display: inline-block; padding: 6px 12px; border-radius: 10px; border: 2px dashed #333; margin-top: 8px;}
+</style>
+</head>
+<body>
+
+<h1>🌈 Rainbow Lagoon Adventure 🌈</h1>
+
+<!-- 1. Pick your character -->
+<div id="setup" class="card">
+  <h2>Step 1: Pick who you want to be</h2>
+  <div class="choices">
+    <button class="char-btn" data-type="mermaid"><span class="big">🧜‍♀️</span>Mermaid</button>
+    <button class="char-btn" data-type="unicorn"><span class="big">🦄</span>Unicorn</button>
+    <button class="char-btn" data-type="alien"><span class="big">👽</span>Alien</button>
+  </div>
+
+  <label>Step 2: Give yourself a name</label>
+  <input type="text" id="player-name" value=" Sunny " maxlength="12">
+
+  <div class="choices" style="margin-top:10px">
+    <div>
+      <label>Body color</label>
+      <input type="color" id="color-body" value="#ff9fda">
+    </div>
+    <div>
+      <label>Magic / hair color</label>
+      <input type="color" id="color-magic" value="#4dd7fa">
+    </div>
+  </div>
+
+  <label>Your look:</label>
+  <div id="preview" class="preview">🦄</div>
+
+  <button class="big-btn" id="start-btn">Start Adventure! ▶</button>
+  <p class="hint">Move with arrow keys or WASD on a computer, or the buttons below on a phone. Walk into ⭐ to collect, walk up to 🐢 or 🧚 and press E to talk.</p>
+</div>
+
+<!-- 2. The game -->
+<div id="game-wrap" class="hidden">
+  <div id="hud">
+    <span id="hud-who">🦄 Sunny</span>
+    <span id="hud-stars">⭐ 0 / 5</span>
+    <span id="hud-msg">Find stars!</span>
+  </div>
+  <canvas id="game" width="800" height="500"></canvas>
+  <div id="dpad">
+    <div><button data-k="up">⬆️</button></div>
+    <div><button data-k="left">⬅️</button><button data-k="down">⬇️</button><button data-k="right">➡️</button><button id="talk-btn">💬</button></div>
+  </div>
+  <p><button class="big-btn" id="back-btn" style="font-size:1rem;background:#888">Change character</button></p>
+</div>
+
+<!-- 3. Story pop-up -->
+<div id="story-box" class="hidden">
+  <h2 id="story-title">Hello!</h2>
+  <p id="story-text"></p>
+  <div id="story-btns"></div>
+</div>
+
+<!-- 4. Ending -->
+<div id="ending" class="card hidden">
+  <h2 id="end-title">You did it!</h2>
+  <p id="end-text" style="font-size:1.2rem"></p>
+  <p id="end-emoji" style="font-size:4rem"></p>
+  <button class="big-btn" id="again-btn">Play again ↻</button>
+</div>
+
+<script>
+// --- Simple cartoon adventure. All in plain words in comments. ---
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const EMOJI = { mermaid: '🧜‍♀️', unicorn: '🦄', alien: '👽' };
+
+// What the player picked
+let player = { type: 'unicorn', name: 'Sunny', body: '#ff9fda', magic: '#4dd7fa', x: 80, y: 250, size: 34 };
+
+// Stars to collect (5 total)
+let stars = [
+  {x: 250, y: 120, got: false},
+  {x: 550, y: 100, got: false},
+  {x: 700, y: 350, got: false},
+  {x: 350, y: 400, got: false},
+  {x: 120, y: 420, got: false},
+];
+
+// Talking friends
+let friends = [
+  {emoji: '🐢', name: 'Tilly Turtle', x: 400, y: 250, talked: false},
+  {emoji: '🧚', name: 'Fairy Fern', x: 620, y: 250, talked: false},
+];
+
+// Magic door that opens at the end
+let door = {x: 740, y: 220, open: false};
+
+let keys = {};
+let starCount = 0;
+let kindPoints = 0; // nice choices add up for a kinder ending
+
+// --- Character picking screen ---
+let charBtns = document.querySelectorAll('.char-btn');
+function updatePreview(){
+  document.getElementById('preview').textContent = EMOJI[player.type];
+  document.getElementById('preview').style.background = player.body;
+  document.getElementById('preview').style.boxShadow = '0 0 0 8px ' + player.magic + ' inset';
+}
+charBtns.forEach(b => {
+  b.onclick = () => {
+    charBtns.forEach(x => x.classList.remove('selected'));
+    b.classList.add('selected');
+    player.type = b.dataset.type;
+    updatePreview();
+  };
+});
+document.querySelector('[data-type="unicorn"]').classList.add('selected');
+document.getElementById('color-body').oninput = e => { player.body = e.target.value; updatePreview(); };
+document.getElementById('color-magic').oninput = e => { player.magic = e.target.value; updatePreview(); };
+document.getElementById('player-name').oninput = e => { player.name = e.target.value.trim() || 'Sunny'; };
+updatePreview();
+
+// --- Start / back buttons ---
+document.getElementById('start-btn').onclick = () => {
+  player.name = document.getElementById('player-name').value.trim() || 'Sunny';
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('ending').classList.add('hidden');
+  document.getElementById('game-wrap').classList.remove('hidden');
+  resetWorld();
+};
+document.getElementById('back-btn').onclick = () => {
+  document.getElementById('game-wrap').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+};
+document.getElementById('again-btn').onclick = () => {
+  document.getElementById('ending').classList.add('hidden');
+  document.getElementById('game-wrap').classList.remove('hidden');
+  resetWorld();
+};
+
+function resetWorld(){
+  player.x = 80; player.y = 250;
+  starCount = 0; kindPoints = 0;
+  stars.forEach(s => s.got = false);
+  friends.forEach(f => f.talked = false);
+  door.open = false;
+  updateHud('Find 5 stars!');
+}
+
+// --- Movement keys ---
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+  if(e.key.toLowerCase() === 'e') tryTalk();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// Phone buttons
+document.querySelectorAll('#dpad button[data-k]').forEach(b => {
+  const k = b.dataset.k;
+  const map = {up:'arrowup', down:'arrowdown', left:'arrowleft', right:'arrowright'};
+  b.addEventListener('touchstart', e => { e.preventDefault(); keys[map[k]] = true; });
+  b.addEventListener('touchend', () => { keys[map[k]] = false; });
+  b.addEventListener('mousedown', () => { keys[map[k]] = true; });
+  b.addEventListener('mouseup', () => { keys[map[k]] = false; });
+});
+document.getElementById('talk-btn').onclick = tryTalk;
+
+function updateHud(msg){
+  document.getElementById('hud-who').textContent = EMOJI[player.type] + ' ' + player.name;
+  document.getElementById('hud-stars').textContent = '⭐ ' + starCount + ' / 5';
+  if(msg) document.getElementById('hud-msg').textContent = msg;
+}
+
+// --- Story pop-up helper ---
+function showStory(title, text, options){
+  // options = [{label, action}]
+  document.getElementById('story-title').textContent = title;
+  document.getElementById('story-text').textContent = text;
+  const box = document.getElementById('story-btns');
+  box.innerHTML = '';
+  options.forEach(o => {
+    const btn = document.createElement('button');
+    btn.textContent = o.label;
+    btn.onclick = () => {
+      document.getElementById('story-box').classList.add('hidden');
+      o.action();
+    };
+    box.appendChild(btn);
+  });
+  document.getElementById('story-box').classList.remove('hidden');
+}
+
+function near(a, b, d){ return Math.abs(a.x-b.x) < d && Math.abs(a.y-b.y) < d; }
+
+function tryTalk(){
+  if(document.getElementById('game-wrap').classList.contains('hidden')) return;
+  // Talk to friends
+  for(const f of friends){
+    if(near(player, f, 55) && !f.talked){
+      f.talked = true;
+      if(f.name.includes('Tilly')){
+        showStory('🐢 Tilly Turtle', 'Oh no! My baby photos floated away! Will you help me find a shiny star instead? A kind friend would cheer me up.', [
+          {label: '💖 Yes! I will help (kind)', action: () => { kindPoints++; updateHud('So kind! Tilly gave you a star glow!'); addBonusStar(); }},
+          {label: '🏁 No, let\'s race instead! (silly)', action: () => { updateHud('Zoom! Racing is fun too!'); }}
+        ]);
+      } else {
+        showStory('🧚 Fairy Fern', 'Psst, ' + player.name + '! The Rainbow Door needs 5 stars to open. Do you want a hint or a surprise?', [
+          {label: '💡 Give me a hint', action: () => updateHud('Hint: check the corners of the lagoon!')},
+          {label: '🎁 Surprise me!', action: () => { kindPoints++; updateHud('Fern giggles and drops sparkles!'); addBonusStar(); }}
+        ]);
+      }
+      return;
+    }
+  }
+  // Final door
+  if(near(player, door, 60)){
+    if(starCount >= 5){
+      showStory('🌈 Rainbow Door', 'You found all the stars! One last choice, ' + player.name + ': what should we do with the rainbow magic?', [
+        {label: '💖 Share it with everyone', action: () => endGame(true)},
+        {label: '👑 Keep a little extra for me', action: () => endGame(false)}
+      ]);
+    } else {
+      showStory('🌈 Rainbow Door', 'I need ' + (5 - starCount) + ' more stars to open! Keep exploring.', [
+        {label: 'OK, back to exploring!', action: () => {}}
+      ]);
+    }
+  }
+}
+
+function addBonusStar(){
+  // Kind choices magically mark one uncollected star as found
+  const s = stars.find(s => !s.got);
+  if(s){ s.got = true; starCount++; }
+  if(starCount >= 5) door.open = true;
+  updateHud();
+}
+
+function endGame(shared){
+  document.getElementById('game-wrap').classList.add('hidden');
+  document.getElementById('story-box').classList.add('hidden');
+  const e = document.getElementById('ending');
+  e.classList.remove('hidden');
+  if(shared || kindPoints >= 1){
+    document.getElementById('end-title').textContent = '🌈 Everyone celebrates! 🌈';
+    document.getElementById('end-text').textContent = player.name + ' the ' + player.type + ' shared the rainbow magic! Tilly, Fern, and the whole lagoon throw a bubble party just for you. You collected ' + starCount + ' stars and ' + kindPoints + ' kind points!';
+    document.getElementById('end-emoji').textContent = '🎉🧜🦄👽🎉';
+  } else {
+    document.getElementById('end-title').textContent = '✨ Shiny star keeper! ✨';
+    document.getElementById('end-text').textContent = player.name + ' the ' + player.type + ' keeps a shiny crown of stars! The lagoon still sparkles because you were brave enough to finish. Play again to try the kind path!';
+    document.getElementById('end-emoji').textContent = '👑⭐🌈';
+  }
+}
+
+// --- Drawing the cartoon world ---
+function draw(){
+  // Water + sand + grass
+  ctx.fillStyle = '#7ed6a5'; ctx.fillRect(0,0,800,500);
+  ctx.fillStyle = '#4db2ff'; ctx.fillRect(0,0,800,160); // top = water
+  ctx.fillStyle = '#ffe9a8'; ctx.fillRect(0,150,800,30); // beach edge
+  // Clouds
+  ctx.font = '30px serif'; ctx.fillText('☁️ ☁️ ☁️', 80, 50);
+  ctx.fillText('🌴', 720, 140);
+  ctx.fillText('🪸🐚', 120, 130);
+
+  // Stars left to collect
+  ctx.font = '30px serif';
+  stars.forEach(s => { if(!s.got) ctx.fillText('⭐', s.x, s.y); });
+
+  // Friends
+  friends.forEach(f => {
+    ctx.font = '36px serif';
+    ctx.fillText(f.emoji, f.x-18, f.y+12);
+    if(!f.talked){ ctx.font = '16px sans-serif'; ctx.fillText('❗', f.x+18, f.y-18); }
+  });
+
+  // Door
+  ctx.font = '46px serif';
+  ctx.fillText(door.open ? '🌈🚪✨' : '🌈🚪🔒', door.x-30, door.y+15);
+
+  // Player: colored circle + face
+  ctx.beginPath(); ctx.arc(player.x, player.y, 28, 0, Math.PI*2);
+  ctx.fillStyle = player.body; ctx.fill();
+  ctx.lineWidth = 4; ctx.strokeStyle = '#333'; ctx.stroke();
+  // magic ring
+  ctx.beginPath(); ctx.arc(player.x, player.y, 33, 0, Math.PI*2);
+  ctx.lineWidth = 4; ctx.strokeStyle = player.magic; ctx.stroke();
+  ctx.font = '32px serif'; ctx.textAlign = 'center';
+  ctx.fillText(EMOJI[player.type], player.x, player.y+11);
+  ctx.font = '14px sans-serif'; ctx.fillStyle = '#222';
+  ctx.fillText(player.name, player.x, player.y+48);
+  ctx.textAlign = 'left';
+}
+
+// --- Game movement, runs 60 times a second ---
+function tick(){
+  if(!document.getElementById('game-wrap').classList.contains('hidden')){
+    let speed = 3.2;
+    if(keys['arrowup']||keys['w']) player.y -= speed;
+    if(keys['arrowdown']||keys['s']) player.y += speed;
+    if(keys['arrowleft']||keys['a']) player.x -= speed;
+    if(keys['arrowright']||keys['d']) player.x += speed;
+    // Stay inside the park
+    player.x = Math.max(30, Math.min(770, player.x));
+    player.y = Math.max(30, Math.min(470, player.y));
+
+    // Pick up stars by walking over them
+    stars.forEach(s => {
+      if(!s.got && near(player, s, 30)){
+        s.got = true; starCount++;
+        updateHud(starCount >= 5 ? 'All stars! Go to the 🌈 door!' : 'Yay! A star!');
+        if(starCount >= 5) door.open = true;
+      }
+    });
+    // Auto-hint when close to someone
+    for(const f of friends){
+      if(near(player, f, 55) && !f.talked) updateHud('Press E or 💬 to talk to ' + f.name);
+    }
+    if(near(player, door, 60) && starCount >= 5) updateHud('Press E or 💬 to open the door!');
+  }
+  draw();
+  requestAnimationFrame(tick);
+}
+updateHud();
+tick();
+</script>
+</body>
+</html>
